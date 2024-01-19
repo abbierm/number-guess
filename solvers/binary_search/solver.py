@@ -27,45 +27,40 @@ def _start_game(username: str) -> int:
 
 def _make_guess(game_id: int, guess: int) -> dict:
     x = {"game_id": game_id, "guess": guess}
-    print(x)
     url = f"http://127.0.0.1:8000/guess/"
     r = requests.post(url, json=x)
-    #print(response.text)
     return r.json()
 
 
-def _choose_guess(game_id: int, top_value: int, guesses=0, upper_bound=None,
+def choose_guess(game_id: int, top_value: int, guesses=0, upper_bound=None,
                     lower_bound=None):
     if upper_bound is None and lower_bound is None:
         upper_bound, lower_bound = top_value, 0
     if lower_bound > upper_bound:
         return {"guesses": guesses, "secret_number": None}
 
-    print(f"upper: {upper_bound}, lower: {lower_bound}")
     mid = math.floor((upper_bound + lower_bound) / 2)
 
-    # Request Guess for Mid
-
     r = _make_guess(game_id, mid)
-    print(r)
     guesses += 1
 
     if r["response"].lower() == "correct":
         return {"guesses": guesses, "secret_number": mid}
     elif r["response"].lower() == "higher":  
-        _choose_guess(game_id, top_value, guesses, upper_bound, mid + 1)
+        return choose_guess(game_id, top_value, guesses, upper_bound, mid + 1)
     else:
-        _choose_guess(game_id, top_value, guesses, mid - 1, lower_bound)
-
+        return choose_guess(game_id, top_value, guesses, mid - 1, lower_bound)
 
 
 def run_game_loop(username, top_value):
     r = _start_game(username)
     new_id = r['game_id']
-    x = _choose_guess(new_id, top_value)
+    x = choose_guess(new_id, top_value)
+    print(x)
+    return x
     
-
 
 if __name__ == "__main__":
     args = _parse_arguments()
-    run_game_loop(args.username, args.top_value)
+    results = run_game_loop(args.username, args.top_value)
+    print(results)
