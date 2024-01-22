@@ -9,9 +9,6 @@ from time import strftime
 from contextlib import asynccontextmanager
 
 
-# TODO: Add games to RUNNING_GAMES
-# TODO: Intermittently clean up GAMES cache
-# TODO: Testing
 
 def add_logging():
     here = os.path.abspath(os.path.dirname(__file__))
@@ -37,7 +34,7 @@ class Response(BaseModel):
 
 
 # ==============================================================
-# In-Memory Cache
+# In-Memory Game Data
 # ==============================================================
 
 GAMES = {
@@ -45,30 +42,9 @@ GAMES = {
         "secret_number": 0,
         "username": 'sample',
         "guesses": [],
-        "status": True
+        "status": True,
     },
 }
-
-
-RUNNING_GAMES = {
-    # game_id: start-time
-}
-
-
-def log_running_games():
-    """Logs unfinished games when server shuts down. """
-
-    logging.info('UNFINISHED GAMES')
-    for game_id, time in RUNNING_GAMES.items():
-        
-        secret_number = GAMES[game_id]["secret_number"]
-        username = GAMES[game_id]["username"]
-        guesses = GAMES[game_id]["guesses"]
-        
-        logging.info('game id: %(game_id)s, username: %(username)s secret_number: %(secret_number)s')
-        logging.info('guesses: %(guesses)s')
-    return 
-
 
 # ===============================================================
 # App + Lifespan Events
@@ -79,8 +55,7 @@ async def lifespan(app: FastAPI):
     add_logging()
     yield
     logging.info('Server is shutting down')
-    log_running_games()
-
+    
 
 app = FastAPI(lifespan=lifespan)
 
@@ -89,7 +64,7 @@ app = FastAPI(lifespan=lifespan)
 # ===============================================================
 
 def pick_number() -> int:
-    return random.randint(0, 999)
+    return random.randint(0, 20000)
 
 
 def check_id(game_id: int) -> bool:
@@ -136,9 +111,11 @@ async def make_guess(guess: Guess):
     if not check_id(guess.game_id):
         logging.debug(f'game not found:  {guess.game_id}')
         return {"error": "game id not found"}
+    
     response = check_number(guess.guess, guess.game_id)
     guess_dict = {guess.guess: response}
     GAMES[guess.game_id]["guesses"].append(guess_dict)
+    
     if response == 'correct':
         logging.info(f"Post Game Results: {GAMES[guess.game_id]}")
         GAMES[guess.game_id]["status"] = False
